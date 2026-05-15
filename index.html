@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VoucherSwap — Employee Gift Exchange</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#faf5ff 0%,#fce7f3 50%,#e0f2fe 100%);min-height:100vh;}
+  input,select,textarea{font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#7c3aed!important;box-shadow:0 0 0 3px rgba(124,58,237,0.12);}
+  ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:#f1f5f9;}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px;}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+  @keyframes marqueeScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .card-hover{transition:transform .2s,box-shadow .2s;}
+  .card-hover:hover{transform:translateY(-5px)!important;box-shadow:0 14px 40px rgba(0,0,0,0.14)!important;}
+  .btn-main{background:linear-gradient(135deg,#6c3ce1,#e91e8c);color:#fff;border:none;cursor:pointer;font-family:inherit;}
+  .btn-main:hover{opacity:.92;}
+  .btn-main:active{transform:scale(.98);}
+  .btn-ghost{background:#fff;border:1.5px solid #e5e7eb;cursor:pointer;font-family:inherit;}
+  .btn-ghost:hover{background:#f9fafb;}
+  .pill-btn{cursor:pointer;font-family:inherit;transition:all .15s;}
+  .pill-btn:hover{opacity:.85;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s ease;}
+  .modal-box{background:#fff;border-radius:24px;width:100%;max-width:500px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.22);max-height:90vh;overflow-y:auto;}
+  .toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:14px 28px;border-radius:16px;font-weight:600;font-size:15px;z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.3);animation:slideUp .3s ease;white-space:nowrap;}
+  .particle{position:absolute;border-radius:50%;opacity:.14;pointer-events:none;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef} = React;
+
+const OCCASIONS=["All","Birthday 🎂","Women's Day 🌸","Diwali 🪔","Christmas 🎄","New Year 🎆","Appreciation 🏆"];
+const CATEGORIES=["All","Food & Dining","Shopping","Wellness","Entertainment","Travel","Electronics"];
+
+const INIT_VOUCHERS=[
+  {id:1,owner:"Priya S.",avatar:"PS",aColor:"#e91e8c",title:"Zomato ₹500 Voucher",category:"Food & Dining",occasion:"Women's Day 🌸",value:"₹500",expires:"30 Jun 2026",seeking:"Amazon, Myntra",status:"available",likes:4,isNew:true},
+  {id:2,owner:"Rahul M.",avatar:"RM",aColor:"#6c3ce1",title:"Amazon ₹1000 Gift Card",category:"Shopping",occasion:"Birthday 🎂",value:"₹1000",expires:"31 Aug 2026",seeking:"Swiggy, Zomato",status:"available",likes:7,isNew:false},
+  {id:3,owner:"Sneha K.",avatar:"SK",aColor:"#0ea5e9",title:"Spa & Wellness ₹800",category:"Wellness",occasion:"Women's Day 🌸",value:"₹800",expires:"15 Jul 2026",seeking:"Netflix, PVR",status:"available",likes:11,isNew:true},
+  {id:4,owner:"Arjun T.",avatar:"AT",aColor:"#f59e0b",title:"BookMyShow ₹600",category:"Entertainment",occasion:"Diwali 🪔",value:"₹600",expires:"20 Sep 2026",seeking:"Flipkart, Amazon",status:"exchanged",likes:3,isNew:false},
+  {id:5,owner:"Divya N.",avatar:"DN",aColor:"#10b981",title:"Myntra ₹750 Voucher",category:"Shopping",occasion:"Birthday 🎂",value:"₹750",expires:"10 Aug 2026",seeking:"Wellness, Travel",status:"available",likes:6,isNew:false},
+  {id:6,owner:"Karan P.",avatar:"KP",aColor:"#ef4444",title:"MakeMyTrip ₹1500",category:"Travel",occasion:"Appreciation 🏆",value:"₹1500",expires:"31 Dec 2026",seeking:"Electronics, Shopping",status:"available",likes:9,isNew:true},
+  {id:7,owner:"Anita R.",avatar:"AR",aColor:"#8b5cf6",title:"Croma ₹2000 Gift Card",category:"Electronics",occasion:"Christmas 🎄",value:"₹2000",expires:"28 Feb 2027",seeking:"Travel, Dining",status:"available",likes:12,isNew:true},
+  {id:8,owner:"Vikram S.",avatar:"VS",aColor:"#f97316",title:"Swiggy ₹400 Credit",category:"Food & Dining",occasion:"New Year 🎆",value:"₹400",expires:"30 Jun 2026",seeking:"Spa, Entertainment",status:"available",likes:5,isNew:false},
+  {id:9,owner:"Meera J.",avatar:"MJ",aColor:"#06b6d4",title:"Nykaa ₹600 Voucher",category:"Shopping",occasion:"Women's Day 🌸",value:"₹600",expires:"30 Sep 2026",seeking:"Food, Travel",status:"available",likes:8,isNew:true},
+  {id:10,owner:"Rohit B.",avatar:"RB",aColor:"#84cc16",title:"PVR Cinemas ₹500",category:"Entertainment",occasion:"Appreciation 🏆",value:"₹500",expires:"31 Jul 2026",seeking:"Food & Dining",status:"available",likes:5,isNew:false},
+];
+
+const CAT_COLORS={
+  "Food & Dining":{bg:"#fff3e0",accent:"#f59e0b",text:"#92400e"},
+  "Shopping":{bg:"#ede9fe",accent:"#7c3aed",text:"#4c1d95"},
+  "Wellness":{bg:"#dcfce7",accent:"#10b981",text:"#065f46"},
+  "Entertainment":{bg:"#fce7f3",accent:"#ec4899",text:"#831843"},
+  "Travel":{bg:"#e0f2fe",accent:"#0ea5e9",text:"#0c4a6e"},
+  "Electronics":{bg:"#fee2e2",accent:"#ef4444",text:"#7f1d1d"},
+};
+
+function Avatar({initials,color,size=36}){
+  return <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*0.35,flexShrink:0,letterSpacing:.5}}>{initials}</div>;
+}
+
+function VoucherCard({v,onExchange,onLike,likedIds}){
+  const cat=CAT_COLORS[v.category]||{bg:"#f3f4f6",accent:"#6b7280",text:"#374151"};
+  const liked=likedIds.includes(v.id);
+  return(
+    <div className="card-hover" style={{background:"#fff",borderRadius:20,boxShadow:"0 4px 24px rgba(0,0,0,.08)",overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"fadeIn .4s ease"}}>
+      {v.isNew&&<div style={{position:"absolute",top:14,right:14,background:"#10b981",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,letterSpacing:1,zIndex:2}}>NEW</div>}
+      {v.status==="exchanged"&&<div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.78)",zIndex:3,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:20}}><span style={{background:"#6b7280",color:"#fff",padding:"8px 20px",borderRadius:30,fontWeight:700,fontSize:14}}>Exchanged ✓</span></div>}
+      <div style={{background:cat.bg,padding:"20px 20px 14px",borderBottom:`2px solid ${cat.accent}22`}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+          <Avatar initials={v.avatar} color={v.aColor} size={34}/>
+          <div>
+            <div style={{fontWeight:600,fontSize:13,color:"#1f2937"}}>{v.owner}</div>
+            <div style={{fontSize:11,color:"#6b7280"}}>{v.occasion}</div>
+          </div>
+        </div>
+        <div style={{fontWeight:800,fontSize:18,color:"#1f2937",lineHeight:1.2}}>{v.title}</div>
+        <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <span style={{background:cat.accent,color:"#fff",fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20}}>{v.value}</span>
+          <span style={{background:cat.bg,color:cat.text,fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:20,border:`1px solid ${cat.accent}44`}}>{v.category}</span>
+        </div>
+      </div>
+      <div style={{padding:"14px 20px",flex:1,display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{fontSize:12,color:"#6b7280"}}><span style={{fontWeight:600,color:"#374151"}}>Seeking: </span>{v.seeking}</div>
+        <div style={{fontSize:11,color:"#9ca3af"}}>Expires: {v.expires}</div>
+        <div style={{display:"flex",gap:8,marginTop:"auto",paddingTop:10}}>
+          <button onClick={()=>onExchange(v)} disabled={v.status==="exchanged"} className="btn-main" style={{flex:1,background:v.status==="exchanged"?"#e5e7eb":"linear-gradient(135deg,#6c3ce1,#e91e8c)",color:v.status==="exchanged"?"#9ca3af":"#fff",borderRadius:12,padding:"10px 0",fontWeight:700,fontSize:13,cursor:v.status==="exchanged"?"not-allowed":"pointer"}}>
+            {v.status==="exchanged"?"Exchanged":"🔁 Exchange"}
+          </button>
+          <button onClick={()=>onLike(v.id)} style={{width:44,background:liked?"#fce7f3":"#f9fafb",border:liked?"1.5px solid #ec4899":"1.5px solid #e5e7eb",borderRadius:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:2,padding:"4px 0"}}>
+            <span style={{fontSize:16}}>{liked?"❤️":"🤍"}</span>
+            <span style={{fontSize:10,color:"#6b7280",fontWeight:600}}>{v.likes+(liked?1:0)}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExchangeModal({v,onClose,onConfirm}){
+  const [myV,setMyV]=useState("");
+  const [note,setNote]=useState("");
+  if(!v)return null;
+  return(
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal-box">
+        <div style={{fontWeight:800,fontSize:22,marginBottom:6,color:"#1f2937"}}>🔁 Request Exchange</div>
+        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Requesting exchange with <strong>{v.owner}</strong></div>
+        <div style={{background:"#f3f4f6",borderRadius:14,padding:16,marginBottom:20}}>
+          <div style={{fontSize:12,color:"#9ca3af",marginBottom:4}}>Their voucher</div>
+          <div style={{fontWeight:700,color:"#1f2937"}}>{v.title}</div>
+          <div style={{fontSize:13,color:"#6b7280"}}>Value: {v.value} · {v.category}</div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>What voucher are you offering? *</label>
+          <input value={myV} onChange={e=>setMyV(e.target.value)} placeholder="e.g. Amazon ₹800, Swiggy ₹500..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14}}/>
+        </div>
+        <div style={{marginBottom:24}}>
+          <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>Note (optional)</label>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Hi! I'd love to swap..." rows={3} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14,resize:"none"}}/>
+        </div>
+        <div style={{display:"flex",gap:12}}>
+          <button onClick={onClose} className="btn-ghost" style={{flex:1,padding:"12px 0",borderRadius:12,fontWeight:600,fontSize:14}}>Cancel</button>
+          <button onClick={()=>{if(myV.trim())onConfirm(myV,note);}} className="btn-main" style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14,background:myV.trim()?"linear-gradient(135deg,#6c3ce1,#e91e8c)":"#e5e7eb",color:myV.trim()?"#fff":"#9ca3af",cursor:myV.trim()?"pointer":"not-allowed"}}>
+            Send Request 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddModal({onClose,onAdd}){
+  const [f,setF]=useState({title:"",category:"Shopping",occasion:"Birthday 🎂",value:"",expires:"",seeking:""});
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const valid=f.title&&f.value&&f.expires&&f.seeking;
+  return(
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal-box">
+        <div style={{fontWeight:800,fontSize:22,marginBottom:4,color:"#1f2937"}}>🎁 List Your Voucher</div>
+        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Share your gift with colleagues</div>
+        {[["Voucher Title *","title","e.g. Zomato ₹500 Voucher"],["Value *","value","e.g. ₹500"],["Expires On *","expires","e.g. 30 Jun 2026"],["Looking For *","seeking","e.g. Amazon, Myntra"]].map(([label,key,ph])=>(
+          <div key={key} style={{marginBottom:14}}>
+            <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>{label}</label>
+            <input value={f[key]} onChange={e=>set(key,e.target.value)} placeholder={ph} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14}}/>
+          </div>
+        ))}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
+          <div>
+            <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>Category</label>
+            <select value={f.category} onChange={e=>set("category",e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14,background:"#fff"}}>
+              {CATEGORIES.filter(c=>c!=="All").map(c=><option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>Occasion</label>
+            <select value={f.occasion} onChange={e=>set("occasion",e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14,background:"#fff"}}>
+              {OCCASIONS.filter(o=>o!=="All").map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12}}>
+          <button onClick={onClose} className="btn-ghost" style={{flex:1,padding:"12px 0",borderRadius:12,fontWeight:600,fontSize:14}}>Cancel</button>
+          <button onClick={()=>{if(valid)onAdd(f);}} className="btn-main" style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14,background:valid?"linear-gradient(135deg,#6c3ce1,#e91e8c)":"#e5e7eb",color:valid?"#fff":"#9ca3af",cursor:valid?"pointer":"not-allowed"}}>
+            List Voucher 🎉
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Toast({msg,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,3500);return()=>clearTimeout(t);},[]);
+  return <div className="toast">{msg}</div>;
+}
+
+function App(){
+  const [vouchers,setVouchers]=useState(INIT_VOUCHERS);
+  const [search,setSearch]=useState("");
+  const [occasion,setOccasion]=useState("All");
+  const [category,setCategory]=useState("All");
+  const [exchangeTarget,setExchangeTarget]=useState(null);
+  const [showAdd,setShowAdd]=useState(false);
+  const [likedIds,setLikedIds]=useState([]);
+  const [toast,setToast]=useState(null);
+  const [tab,setTab]=useState("browse");
+
+  const filtered=vouchers.filter(v=>{
+    const s=search.toLowerCase();
+    const mS=v.title.toLowerCase().includes(s)||v.owner.toLowerCase().includes(s)||v.category.toLowerCase().includes(s);
+    const mO=occasion==="All"||v.occasion===occasion;
+    const mC=category==="All"||v.category===category;
+    return mS&&mO&&mC;
+  });
+  const avail=filtered.filter(v=>v.status==="available");
+  const exchd=filtered.filter(v=>v.status==="exchanged");
+
+  const stats={
+    total:vouchers.length,
+    available:vouchers.filter(v=>v.status==="available").length,
+    exchanged:vouchers.filter(v=>v.status==="exchanged").length,
+  };
+
+  const handleExchangeConfirm=(myV,note)=>{
+    setVouchers(vs=>vs.map(v=>v.id===exchangeTarget.id?{...v,status:"exchanged"}:v));
+    setToast(`✅ Exchange request sent to ${exchangeTarget.owner}!`);
+    setExchangeTarget(null);
+  };
+
+  const handleAdd=(f)=>{
+    const newV={id:Date.now(),owner:"You",avatar:"ME",aColor:"#6c3ce1",...f,status:"available",likes:0,isNew:true};
+    setVouchers(vs=>[newV,...vs]);
+    setShowAdd(false);
+    setToast("🎉 Your voucher is now live!");
+  };
+
+  const handleLike=(id)=>setLikedIds(ids=>ids.includes(id)?ids.filter(i=>i!==id):[...ids,id]);
+
+  return(
+    <div style={{minHeight:"100vh",position:"relative",overflow:"hidden"}}>
+
+      {/* BG PARTICLES */}
+      <div className="particle" style={{width:320,height:320,background:"#a78bfa",top:-90,right:-90,animation:"float 7s ease-in-out infinite"}}/>
+      <div className="particle" style={{width:220,height:220,background:"#f9a8d4",bottom:80,left:-70,animation:"float 9s ease-in-out infinite 2s"}}/>
+      <div className="particle" style={{width:160,height:160,background:"#67e8f9",top:"38%",right:"6%",animation:"float 8s ease-in-out infinite 4s"}}/>
+      <div className="particle" style={{width:100,height:100,background:"#fde68a",top:"60%",left:"8%",animation:"float 6s ease-in-out infinite 1s"}}/>
+
+      {/* STICKY HEADER */}
+      <div style={{background:"rgba(255,255,255,.88)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(124,58,237,.1)",position:"sticky",top:0,zIndex:100}}>
+        <div style={{maxWidth:1200,margin:"0 auto",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:46,height:46,borderRadius:14,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,boxShadow:"0 4px 14px rgba(108,60,225,.35)"}}>🎁</div>
+            <div>
+              <div style={{fontWeight:900,fontSize:21,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>VoucherSwap</div>
+              <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginTop:-2}}>Employee Gift Exchange Platform</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{display:"flex",background:"#f3f4f6",borderRadius:12,padding:4,gap:4}}>
+              {[["browse","🔍 Browse"],["my-vouchers","📋 My Vouchers"],["policy","📋 Policy"]].map(([t,label])=>(
+                <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 14px",borderRadius:10,border:"none",background:tab===t?"#fff":"transparent",color:tab===t?"#6c3ce1":"#6b7280",fontWeight:tab===t?700:500,fontSize:13,cursor:"pointer",boxShadow:tab===t?"0 2px 8px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:12,padding:"10px 18px",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6,animation:"pulse 2.5s ease-in-out infinite",boxShadow:"0 4px 16px rgba(108,60,225,.35)"}}>
+              + List Voucher
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 20px"}}>
+
+        {/* STATS */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14,marginBottom:26}}>
+          {[
+            {label:"Total Vouchers",val:stats.total,icon:"🎁",bg:"#ede9fe",c:"#6c3ce1"},
+            {label:"Available Now",val:stats.available,icon:"✅",bg:"#dcfce7",c:"#059669"},
+            {label:"Exchanges Done",val:stats.exchanged,icon:"🔁",bg:"#fce7f3",c:"#db2777"},
+            {label:"Happy Members",val:42,icon:"😊",bg:"#fef3c7",c:"#d97706"},
+          ].map(s=>(
+            <div key={s.label} style={{background:s.bg,borderRadius:18,padding:"16px 18px",textAlign:"center",animation:"fadeIn .5s ease"}}>
+              <div style={{fontSize:26}}>{s.icon}</div>
+              <div style={{fontSize:30,fontWeight:900,color:s.c,lineHeight:1.1}}>{s.val}</div>
+              <div style={{fontSize:12,color:"#6b7280",fontWeight:600,marginTop:2}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ——— BROWSE TAB ——— */}
+        {tab==="browse"&&<>
+          {/* SEARCH & FILTERS */}
+          <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:"18px 22px",marginBottom:20,boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍  Search vouchers, names, categories..." style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid #e5e7eb",fontSize:15,marginBottom:14,background:"#f9fafb"}}/>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#9ca3af",marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Occasion</div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                {OCCASIONS.map(o=>(
+                  <button key={o} onClick={()=>setOccasion(o)} className="pill-btn" style={{padding:"6px 13px",borderRadius:20,border:"1.5px solid",borderColor:occasion===o?"#7c3aed":"#e5e7eb",background:occasion===o?"#ede9fe":"#fff",color:occasion===o?"#7c3aed":"#6b7280",fontWeight:occasion===o?700:500,fontSize:12}}>
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#9ca3af",marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Category</div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                {CATEGORIES.map(c=>(
+                  <button key={c} onClick={()=>setCategory(c)} className="pill-btn" style={{padding:"5px 11px",borderRadius:16,border:"1.5px solid",borderColor:category===c?"#e91e8c":"#e5e7eb",background:category===c?"#fce7f3":"#fff",color:category===c?"#be185d":"#6b7280",fontWeight:category===c?700:500,fontSize:11}}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* MARQUEE */}
+          <div style={{background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",borderRadius:14,padding:"10px 0",marginBottom:22,overflow:"hidden"}}>
+            <div style={{display:"flex",gap:48,color:"#fff",fontSize:13,fontWeight:600,whiteSpace:"nowrap",animation:"marqueeScroll 22s linear infinite"}}>
+              {[...INIT_VOUCHERS,...INIT_VOUCHERS].map((v,i)=>(
+                <span key={i} style={{padding:"0 8px"}}>🎁 {v.title} — {v.value}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* AVAILABLE CARDS */}
+          <div style={{fontSize:15,fontWeight:700,color:"#374151",marginBottom:14}}>
+            {avail.length} voucher{avail.length!==1?"s":""} available
+            {(search||occasion!=="All"||category!=="All")&&<span style={{color:"#9ca3af",fontWeight:400,fontSize:13}}> (filtered)</span>}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))",gap:18}}>
+            {avail.map(v=><VoucherCard key={v.id} v={v} onExchange={setExchangeTarget} onLike={handleLike} likedIds={likedIds}/>)}
+            {avail.length===0&&(
+              <div style={{gridColumn:"1/-1",textAlign:"center",padding:"60px 20px"}}>
+                <div style={{fontSize:48}}>🔍</div>
+                <div style={{fontSize:18,fontWeight:700,marginTop:12,color:"#374151"}}>No vouchers match your filters</div>
+                <div style={{fontSize:14,color:"#9ca3af",marginTop:4}}>Try adjusting the occasion or category</div>
+                <button onClick={()=>{setSearch("");setOccasion("All");setCategory("All");}} style={{marginTop:16,padding:"10px 22px",borderRadius:12,background:"#ede9fe",color:"#7c3aed",border:"none",fontWeight:700,cursor:"pointer",fontSize:14}}>Clear Filters</button>
+              </div>
+            )}
+          </div>
+
+          {/* EXCHANGED SECTION */}
+          {exchd.length>0&&(
+            <div style={{marginTop:36}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#9ca3af",marginBottom:14}}>✅ Completed Exchanges ({exchd.length})</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))",gap:18}}>
+                {exchd.map(v=><VoucherCard key={v.id} v={v} onExchange={setExchangeTarget} onLike={handleLike} likedIds={likedIds}/>)}
+              </div>
+            </div>
+          )}
+        </>}
+
+        {/* ——— MY VOUCHERS TAB ——— */}
+        {tab==="my-vouchers"&&(
+          <div style={{animation:"fadeIn .4s ease"}}>
+            <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:32,boxShadow:"0 4px 20px rgba(0,0,0,.06)",textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:56}}>👤</div>
+              <div style={{fontSize:22,fontWeight:800,color:"#1f2937",marginTop:12}}>Your Voucher Dashboard</div>
+              <div style={{fontSize:14,color:"#6b7280",marginTop:6,marginBottom:24}}>Track vouchers you've listed and exchanges you've made</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14,marginBottom:24}}>
+                {[["Listed","0","🎁","#ede9fe","#6c3ce1"],["Exchanged","0","🔁","#dcfce7","#059669"],["Requests","0","📬","#fce7f3","#db2777"]].map(([l,val,ic,bg,c])=>(
+                  <div key={l} style={{background:bg,borderRadius:16,padding:"18px 14px",textAlign:"center"}}>
+                    <div style={{fontSize:28}}>{ic}</div>
+                    <div style={{fontSize:30,fontWeight:900,color:c}}>{val}</div>
+                    <div style={{fontSize:13,color:"#6b7280"}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:14,padding:"14px 30px",fontWeight:700,fontSize:16,boxShadow:"0 4px 16px rgba(108,60,225,.3)"}}>
+                + List Your First Voucher 🎁
+              </button>
+            </div>
+            <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:32,boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
+              <div style={{fontSize:18,fontWeight:800,color:"#1f2937",marginBottom:24,textAlign:"center"}}>How VoucherSwap Works</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:20,textAlign:"center"}}>
+                {[["🎁","1. List It","Post your unwanted voucher with full details"],["🔍","2. Browse","Explore what your colleagues have listed"],["🔁","3. Request","Send an exchange offer with your voucher"],["✅","4. Swap!","Coordinate directly and complete the swap"]].map(([ic,step,desc])=>(
+                  <div key={step}>
+                    <div style={{fontSize:34,marginBottom:8}}>{ic}</div>
+                    <div style={{fontWeight:700,color:"#6c3ce1",fontSize:14,marginBottom:5}}>{step}</div>
+                    <div style={{fontSize:12,color:"#6b7280",lineHeight:1.6}}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ——— POLICY TAB ——— */}
+        {tab==="policy"&&(
+          <div style={{animation:"fadeIn .4s ease"}}>
+            <div style={{background:"rgba(255,255,255,.95)",borderRadius:20,padding:32,boxShadow:"0 4px 20px rgba(0,0,0,.06)",marginBottom:20}}>
+              <div style={{fontSize:22,fontWeight:800,color:"#1f2937",marginBottom:6}}>📋 Company Exchange Policy</div>
+              <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Please read and follow these guidelines to ensure a smooth, compliant experience for everyone.</div>
+              {[
+                {icon:"🤝",title:"Voluntary Participation",desc:"All exchanges are completely voluntary. No employee shall be pressured to list, exchange, or accept any voucher."},
+                {icon:"🚫",title:"No Cash Transactions",desc:"VoucherSwap is a like-for-like barter platform only. Selling vouchers for money is strictly prohibited and against company policy."},
+                {icon:"✅",title:"Legitimate Vouchers Only",desc:"Only list vouchers that were issued to you officially by the company as a gift or reward. Do not list purchased or third-party vouchers."},
+                {icon:"📣",title:"High-Value Exchange Disclosure",desc:"For voucher exchanges involving ₹5,000 or more in value, employees must notify HR at hr@company.com before completing the exchange."},
+                {icon:"🔒",title:"Internal Use Only",desc:"This platform is strictly for internal company use. Do not share vouchers, listings, or platform access with anyone outside the organisation."},
+                {icon:"🛡️",title:"IT Monitoring",desc:"All activity on VoucherSwap is monitored by the IT Security team to ensure compliance. Misuse may lead to disciplinary action."},
+                {icon:"📞",title:"Dispute Resolution",desc:"Any disputes arising from an exchange should be reported to HR. The company's decision on disputes is final."},
+                {icon:"📅",title:"Expiry Responsibility",desc:"Employees are responsible for checking and honouring the expiry dates listed. The company is not liable for expired vouchers after exchange."},
+              ].map(item=>(
+                <div key={item.title} style={{display:"flex",gap:16,padding:"16px 0",borderBottom:"1px solid #f3f4f6"}}>
+                  <div style={{fontSize:28,flexShrink:0,width:36,textAlign:"center"}}>{item.icon}</div>
+                  <div>
+                    <div style={{fontWeight:700,color:"#1f2937",fontSize:15,marginBottom:4}}>{item.title}</div>
+                    <div style={{fontSize:14,color:"#6b7280",lineHeight:1.6}}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:"linear-gradient(135deg,#ede9fe,#fce7f3)",borderRadius:20,padding:24,border:"1px solid rgba(124,58,237,.15)"}}>
+              <div style={{fontWeight:700,fontSize:15,color:"#6c3ce1",marginBottom:8}}>📧 Need Help?</div>
+              <div style={{fontSize:14,color:"#374151",lineHeight:1.8}}>
+                For any queries about the VoucherSwap platform or exchange policies, please contact:<br/>
+                <strong>HR Team:</strong> hr@company.com<br/>
+                <strong>IT Helpdesk:</strong> it@company.com<br/>
+                <strong>Platform Admin:</strong> voucherswap@company.com
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MODALS */}
+      {exchangeTarget&&<ExchangeModal v={exchangeTarget} onClose={()=>setExchangeTarget(null)} onConfirm={handleExchangeConfirm}/>}
+      {showAdd&&<AddModal onClose={()=>setShowAdd(false)} onAdd={handleAdd}/>}
+      {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
+
+      {/* FOOTER */}
+      <div style={{textAlign:"center",padding:"32px 20px",color:"#9ca3af",fontSize:12,borderTop:"1px solid rgba(0,0,0,.06)",marginTop:40,background:"rgba(255,255,255,.5)"}}>
+        <div style={{fontWeight:700,fontSize:14,color:"#6c3ce1",marginBottom:4}}>🎁 VoucherSwap</div>
+        Internal Employee Gift Exchange Platform · For company use only · Monitored by IT Security<br/>
+        © {new Date().getFullYear()} Company Confidential — Do not distribute externally
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
