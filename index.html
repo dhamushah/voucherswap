@@ -48,6 +48,12 @@ const ADMIN_PASSWORD = "admin123"; // Change this to your preferred password
 
 const OCCASIONS=["All","Birthday 🎂","Women's Day 🌸","Diwali 🪔","Christmas 🎄","New Year 🎆","Appreciation 🏆"];
 const CATEGORIES=["All","Food & Dining","Shopping","Wellness","Entertainment","Travel","Electronics"];
+const MALLS=["All Malls","🏬 Oberoi Mall","🏙 Skycity Mall"];
+
+const MALL_COLORS={
+  "🏬 Oberoi Mall":{bg:"#fef3c7",accent:"#f59e0b",text:"#92400e",badge:"#f59e0b"},
+  "🏙 Skycity Mall":{bg:"#e0f2fe",accent:"#0ea5e9",text:"#0c4a6e",badge:"#0ea5e9"},
+};
 
 // ✅ EMPTY — No sample data. Real vouchers will be added by your team.
 const INIT_VOUCHERS=[];
@@ -72,6 +78,7 @@ function Avatar({initials,color,size=36}){
 
 function VoucherCard({v,onExchange,onLike,likedIds,isAdmin,onDelete}){
   const cat=CAT_COLORS[v.category]||{bg:"#f3f4f6",accent:"#6b7280",text:"#374151"};
+  const mall=MALL_COLORS[v.mall]||null;
   const liked=likedIds.includes(v.id);
   return(
     <div className={`card-hover${isAdmin?" admin-card":""}`} style={{background:"#fff",borderRadius:20,boxShadow:"0 4px 24px rgba(0,0,0,.08)",overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"fadeIn .4s ease"}}>
@@ -80,6 +87,10 @@ function VoucherCard({v,onExchange,onLike,likedIds,isAdmin,onDelete}){
       )}
       {v.isNew&&!isAdmin&&<div style={{position:"absolute",top:14,right:14,background:"#10b981",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,letterSpacing:1,zIndex:2}}>NEW</div>}
       {v.status==="exchanged"&&<div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.78)",zIndex:3,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:20}}><span style={{background:"#6b7280",color:"#fff",padding:"8px 20px",borderRadius:30,fontWeight:700,fontSize:14}}>Exchanged ✓</span></div>}
+      {/* MALL BANNER */}
+      {v.mall&&<div style={{background:mall?mall.bg:"#f3f4f6",borderBottom:`2px solid ${mall?mall.accent:"#e5e7eb"}`,padding:"6px 16px",display:"flex",alignItems:"center",gap:6}}>
+        <span style={{background:mall?mall.accent:"#6b7280",color:"#fff",fontSize:10,fontWeight:800,padding:"2px 10px",borderRadius:20,letterSpacing:.5}}>{v.mall}</span>
+      </div>}
       <div style={{background:cat.bg,padding:"20px 20px 14px",borderBottom:`2px solid ${cat.accent}22`}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
           <Avatar initials={v.avatar} color={v.aColor} size={34}/>
@@ -198,14 +209,32 @@ function ExchangeModal({v,onClose,onConfirm}){
 }
 
 function AddModal({onClose,onAdd}){
-  const [f,setF]=useState({owner:"",title:"",category:"Shopping",occasion:"Birthday 🎂",value:"",expires:"",seeking:""});
+  const [f,setF]=useState({owner:"",title:"",category:"Shopping",occasion:"Birthday 🎂",mall:"🏬 Oberoi Mall",value:"",expires:"",seeking:""});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const valid=f.owner&&f.title&&f.value&&f.expires&&f.seeking;
+  const valid=f.owner&&f.title&&f.value&&f.expires&&f.seeking&&f.mall;
   return(
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal-box">
         <div style={{fontWeight:800,fontSize:22,marginBottom:4,color:"#1f2937"}}>🎁 List Your Voucher</div>
         <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Share your gift with colleagues</div>
+
+        {/* MALL SELECTOR — prominent at top */}
+        <div style={{marginBottom:18}}>
+          <label style={{fontSize:13,fontWeight:700,color:"#374151",display:"block",marginBottom:8}}>Your Mall *</label>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {MALLS.filter(m=>m!=="All Malls").map(m=>{
+              const mc=MALL_COLORS[m];
+              const selected=f.mall===m;
+              return(
+                <button key={m} onClick={()=>set("mall",m)} style={{padding:"14px 10px",borderRadius:14,border:`2px solid ${selected?mc.accent:"#e5e7eb"}`,background:selected?mc.bg:"#f9fafb",color:selected?mc.text:"#6b7280",fontWeight:selected?800:500,fontSize:14,cursor:"pointer",transition:"all .15s",textAlign:"center"}}>
+                  {m}
+                  {selected&&<div style={{fontSize:10,fontWeight:600,color:mc.accent,marginTop:4}}>✓ Selected</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {[["Your Name *","owner","e.g. Rahul M."],["Voucher Title *","title","e.g. Zomato ₹500 Voucher"],["Value *","value","e.g. ₹500"],["Expires On *","expires","e.g. 30 Jun 2026"],["Looking For *","seeking","e.g. Amazon, Myntra"]].map(([label,key,ph])=>(
           <div key={key} style={{marginBottom:14}}>
             <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>{label}</label>
@@ -247,6 +276,7 @@ function App(){
   const [search,setSearch]=useState("");
   const [occasion,setOccasion]=useState("All");
   const [category,setCategory]=useState("All");
+  const [mall,setMall]=useState("All Malls");
   const [exchangeTarget,setExchangeTarget]=useState(null);
   const [showAdd,setShowAdd]=useState(false);
   const [likedIds,setLikedIds]=useState([]);
@@ -261,7 +291,8 @@ function App(){
     const mS=v.title.toLowerCase().includes(s)||v.owner.toLowerCase().includes(s)||v.category.toLowerCase().includes(s);
     const mO=occasion==="All"||v.occasion===occasion;
     const mC=category==="All"||v.category===category;
-    return mS&&mO&&mC;
+    const mM=mall==="All Malls"||v.mall===mall;
+    return mS&&mO&&mC&&mM;
   });
   const avail=filtered.filter(v=>v.status==="available");
   const exchd=filtered.filter(v=>v.status==="exchanged");
@@ -362,6 +393,25 @@ function App(){
 
         {/* ——— BROWSE TAB ——— */}
         {tab==="browse"&&<>
+          {/* MALL QUICK FILTER — big prominent buttons */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:20}}>
+            {[
+              {m:"All Malls",icon:"🏢",bg:"#f3f4f6",active:"#6c3ce1",activeBg:"#ede9fe",label:"All Malls"},
+              {m:"🏬 Oberoi Mall",icon:"🏬",bg:"#fff",active:"#f59e0b",activeBg:"#fef3c7",label:"Oberoi Mall"},
+              {m:"🏙 Skycity Mall",icon:"🏙",bg:"#fff",active:"#0ea5e9",activeBg:"#e0f2fe",label:"Skycity Mall"},
+            ].map(({m,icon,active,activeBg,label})=>{
+              const sel=mall===m;
+              return(
+                <button key={m} onClick={()=>setMall(m)} style={{padding:"16px 10px",borderRadius:18,border:`2px solid ${sel?active:"#e5e7eb"}`,background:sel?activeBg:"rgba(255,255,255,.9)",cursor:"pointer",textAlign:"center",transition:"all .2s",boxShadow:sel?`0 4px 16px ${active}33`:"0 2px 8px rgba(0,0,0,.04)"}}>
+                  <div style={{fontSize:28,marginBottom:4}}>{icon}</div>
+                  <div style={{fontWeight:sel?800:600,color:sel?active:"#6b7280",fontSize:14}}>{label}</div>
+                  {sel&&<div style={{fontSize:10,color:active,fontWeight:700,marginTop:3}}>● ACTIVE</div>}
+                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{m==="All Malls"?`${vouchers.length} vouchers`:vouchers.filter(v=>v.mall===m).length+" vouchers"}</div>
+                </button>
+              );
+            })}
+          </div>
+
           {/* SEARCH & FILTERS */}
           <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:"18px 22px",marginBottom:20,boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍  Search vouchers, names, categories..." style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid #e5e7eb",fontSize:15,marginBottom:14,background:"#f9fafb"}}/>
@@ -406,10 +456,13 @@ function App(){
             {avail.map(v=><VoucherCard key={v.id} v={v} onExchange={setExchangeTarget} onLike={handleLike} likedIds={likedIds} isAdmin={isAdmin} onDelete={setDeleteTarget}/>)}
             {avail.length===0&&(
               <div style={{gridColumn:"1/-1",textAlign:"center",padding:"70px 20px"}}>
-                <div style={{fontSize:64}}>🎁</div>
-                <div style={{fontSize:22,fontWeight:800,marginTop:16,color:"#1f2937"}}>No vouchers listed yet!</div>
-                <div style={{fontSize:15,color:"#6b7280",marginTop:8,marginBottom:24}}>Be the first to list your gift voucher and start exchanging with colleagues.</div>
-                <button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:14,padding:"14px 32px",fontWeight:700,fontSize:16,boxShadow:"0 4px 16px rgba(108,60,225,.3)"}}>+ List Your Voucher 🎁</button>
+                <div style={{fontSize:64}}>{vouchers.length===0?"🎁":"🔍"}</div>
+                <div style={{fontSize:22,fontWeight:800,marginTop:16,color:"#1f2937"}}>{vouchers.length===0?"No vouchers listed yet!":"No vouchers match your filters"}</div>
+                <div style={{fontSize:15,color:"#6b7280",marginTop:8,marginBottom:24}}>{vouchers.length===0?"Be the first to list your gift voucher and start exchanging with colleagues.":"Try selecting 'All Malls' or adjusting your filters."}</div>
+                {vouchers.length===0
+                  ?<button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:14,padding:"14px 32px",fontWeight:700,fontSize:16,boxShadow:"0 4px 16px rgba(108,60,225,.3)"}}>+ List Your Voucher 🎁</button>
+                  :<button onClick={()=>{setSearch("");setOccasion("All");setCategory("All");setMall("All Malls");}} style={{padding:"12px 24px",borderRadius:12,background:"#ede9fe",color:"#7c3aed",border:"none",fontWeight:700,cursor:"pointer",fontSize:14}}>Clear All Filters</button>
+                }
               </div>
             )}
           </div>
