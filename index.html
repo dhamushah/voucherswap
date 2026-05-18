@@ -7,6 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#faf5ff 0%,#fce7f3 50%,#e0f2fe 100%);min-height:100vh;}
@@ -19,46 +21,64 @@
   @keyframes marqueeScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
   .card-hover{transition:transform .2s,box-shadow .2s;}
   .card-hover:hover{transform:translateY(-5px)!important;box-shadow:0 14px 40px rgba(0,0,0,0.14)!important;}
-  .admin-card{border:2px dashed #ef4444!important;animation:none!important;}
+  .admin-card{border:2px dashed #ef4444!important;}
   .admin-card:hover{transform:none!important;}
   .btn-main{background:linear-gradient(135deg,#6c3ce1,#e91e8c);color:#fff;border:none;cursor:pointer;font-family:inherit;}
-  .btn-main:hover{opacity:.92;}
-  .btn-main:active{transform:scale(.98);}
+  .btn-main:hover{opacity:.92;} .btn-main:active{transform:scale(.98);}
   .btn-ghost{background:#fff;border:1.5px solid #e5e7eb;cursor:pointer;font-family:inherit;}
   .btn-ghost:hover{background:#f9fafb;}
-  .pill-btn{cursor:pointer;font-family:inherit;transition:all .15s;}
-  .pill-btn:hover{opacity:.85;}
+  .pill-btn{cursor:pointer;font-family:inherit;transition:all .15s;} .pill-btn:hover{opacity:.85;}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .2s ease;}
   .modal-box{background:#fff;border-radius:24px;width:100%;max-width:500px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.22);max-height:90vh;overflow-y:auto;}
   .toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:14px 28px;border-radius:16px;font-weight:600;font-size:15px;z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.3);animation:slideUp .3s ease;white-space:nowrap;}
   .particle{position:absolute;border-radius:50%;opacity:.14;pointer-events:none;}
   .delete-btn{position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;box-shadow:0 2px 8px rgba(239,68,68,.5);transition:transform .15s;}
   .delete-btn:hover{transform:scale(1.15);}
-  .admin-banner{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:10px 20px;border-radius:12px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px;margin-bottom:16px;animation:fadeIn .3s ease;}
+  .admin-banner{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:10px 20px;border-radius:12px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px;margin-bottom:16px;}
+  .spinner{width:44px;height:44px;border:4px solid #ede9fe;border-top-color:#7c3aed;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;}
+  .live-dot{width:7px;height:7px;background:#10b981;border-radius:50%;display:inline-block;margin-right:5px;animation:pulse 1.5s ease-in-out infinite;}
 </style>
 </head>
 <body>
 <div id="root"></div>
+
+<script>
+// ================================================================
+// 🔥 STEP 1: GO TO https://console.firebase.google.com
+// STEP 2: Create project → Realtime Database → Test mode → Enable
+// STEP 3: Gear icon → Project settings → Your apps → Web → Register
+// STEP 4: Copy your config values and paste below
+// ================================================================
+const firebaseConfig = {
+  apiKey:            "AIzaSyCeMB2-EGbU18L-6O5pXTFzyt1Rjv2hkts",
+  authDomain:        "vocherswap.firebaseapp.com",
+  databaseURL:       "https://vocherswap-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "vocherswap",
+  storageBucket:     "vocherswap.firebasestorage.app",
+  messagingSenderId: "621865623899",
+  appId:             "1:621865623899:web:8e217579bd79b79afffa7e"
+};
+try {
+  firebase.initializeApp(firebaseConfig);
+  window.voucherDB = firebase.database().ref("vouchers");
+  window.firebaseReady = (firebaseConfig.apiKey !== "YOUR_API_KEY");
+} catch(e) { window.firebaseReady = false; }
+</script>
+
 <script type="text/babel">
 const {useState,useEffect} = React;
-
-const ADMIN_PASSWORD = "admin123"; // Change this to your preferred password
-
-const OCCASIONS=["All","Birthday 🎂","Women's Day 🌸","Diwali 🪔","Christmas 🎄","New Year 🎆","Appreciation 🏆"];
-const CATEGORIES=["All","Food & Dining","Shopping","Wellness","Entertainment","Travel","Electronics"];
-const MALLS=["All Malls","🏬 Oberoi Mall","🏙 Skycity Mall"];
-
-const MALL_COLORS={
-  "🏬 Oberoi Mall":{bg:"#fef3c7",accent:"#f59e0b",text:"#92400e",badge:"#f59e0b"},
-  "🏙 Skycity Mall":{bg:"#e0f2fe",accent:"#0ea5e9",text:"#0c4a6e",badge:"#0ea5e9"},
+const ADMIN_PASSWORD = "admin123";
+const OCCASIONS = ["All","Birthday 🎂","Women's Day 🌸","Diwali 🪔","Christmas 🎄","New Year 🎆","Appreciation 🏆"];
+const CATEGORIES = ["All","Food & Dining","Shopping","Wellness","Entertainment","Travel","Electronics"];
+const MALLS = ["All Malls","🏬 Oberoi Mall","🏙 Skycity Mall"];
+const MALL_COLORS = {
+  "🏬 Oberoi Mall":{bg:"#fef3c7",accent:"#f59e0b",text:"#92400e"},
+  "🏙 Skycity Mall":{bg:"#e0f2fe",accent:"#0ea5e9",text:"#0c4a6e"},
 };
-
-// ✅ EMPTY — No sample data. Real vouchers will be added by your team.
-const INIT_VOUCHERS=[];
-
-const CAT_COLORS={
+const CAT_COLORS = {
   "Food & Dining":{bg:"#fff3e0",accent:"#f59e0b",text:"#92400e"},
   "Shopping":{bg:"#ede9fe",accent:"#7c3aed",text:"#4c1d95"},
   "Wellness":{bg:"#dcfce7",accent:"#10b981",text:"#065f46"},
@@ -66,14 +86,51 @@ const CAT_COLORS={
   "Travel":{bg:"#e0f2fe",accent:"#0ea5e9",text:"#0c4a6e"},
   "Electronics":{bg:"#fee2e2",accent:"#ef4444",text:"#7f1d1d"},
 };
-
-const AVATAR_COLORS=["#6c3ce1","#e91e8c","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#f97316","#06b6d4","#84cc16"];
-
-function getInitials(name){return name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);}
-function getAvatarColor(name){let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))%AVATAR_COLORS.length;return AVATAR_COLORS[h];}
+const AV_COLORS=["#6c3ce1","#e91e8c","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#f97316","#06b6d4","#84cc16"];
+const getInitials=n=>n.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+const getAColor=n=>{let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))%AV_COLORS.length;return AV_COLORS[h];};
 
 function Avatar({initials,color,size=36}){
-  return <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*0.35,flexShrink:0,letterSpacing:.5}}>{initials}</div>;
+  return <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:size*.35,flexShrink:0}}>{initials}</div>;
+}
+
+function SetupScreen(){
+  return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{background:"#fff",borderRadius:24,padding:36,maxWidth:560,width:"100%",boxShadow:"0 8px 40px rgba(0,0,0,.12)",textAlign:"center"}}>
+        <div style={{fontSize:56,marginBottom:12}}>🔥</div>
+        <div style={{fontWeight:800,fontSize:22,color:"#1f2937",marginBottom:8}}>Connect Firebase to Save Data</div>
+        <div style={{fontSize:14,color:"#6b7280",lineHeight:1.8,marginBottom:24}}>Follow these 6 quick steps to connect your free Firebase database — takes only 5 minutes!</div>
+        {[
+          ["1","Go to firebase.google.com","Sign in with your Google account"],
+          ["2","Click 'Add project'","Name it voucherswap → Continue → Create project"],
+          ["3","Click 'Realtime Database'","Left menu → Create database → Start in test mode → Enable"],
+          ["4","Register your web app","Gear ⚙️ → Project settings → Your apps → </> Web → Register app"],
+          ["5","Copy your config","Copy the firebaseConfig object shown to you"],
+          ["6","Paste in index.html & re-upload","Replace YOUR_API_KEY etc. with your real values → Upload to GitHub"],
+        ].map(([num,title,desc])=>(
+          <div key={num} style={{display:"flex",gap:14,padding:"10px 0",borderBottom:"1px solid #f3f4f6",textAlign:"left"}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",color:"#fff",fontWeight:800,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{num}</div>
+            <div><div style={{fontWeight:700,color:"#1f2937",fontSize:14}}>{title}</div><div style={{fontSize:12,color:"#6b7280",marginTop:2}}>{desc}</div></div>
+          </div>
+        ))}
+        <a href="https://console.firebase.google.com" target="_blank" style={{display:"inline-block",marginTop:24,padding:"14px 32px",borderRadius:14,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",color:"#fff",fontWeight:700,fontSize:15,textDecoration:"none"}}>
+          Open Firebase Console 🔥
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function LoadingScreen(){
+  return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20}}>
+      <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>🎁</div>
+      <div style={{fontWeight:900,fontSize:24,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>VoucherSwap</div>
+      <div className="spinner"/>
+      <div style={{fontSize:14,color:"#9ca3af"}}>Loading vouchers from database...</div>
+    </div>
+  );
 }
 
 function VoucherCard({v,onExchange,onLike,likedIds,isAdmin,onDelete}){
@@ -82,46 +139,40 @@ function VoucherCard({v,onExchange,onLike,likedIds,isAdmin,onDelete}){
   const liked=likedIds.includes(v.id);
   return(
     <div className={`card-hover${isAdmin?" admin-card":""}`} style={{background:"#fff",borderRadius:20,boxShadow:"0 4px 24px rgba(0,0,0,.08)",overflow:"hidden",display:"flex",flexDirection:"column",position:"relative",animation:"fadeIn .4s ease"}}>
-      {isAdmin&&(
-        <button className="delete-btn" onClick={()=>onDelete(v)} title="Delete this voucher">🗑</button>
-      )}
-      {v.isNew&&!isAdmin&&<div style={{position:"absolute",top:14,right:14,background:"#10b981",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,letterSpacing:1,zIndex:2}}>NEW</div>}
+      {isAdmin&&<button className="delete-btn" onClick={()=>onDelete(v)}>🗑</button>}
+      {v.isNew&&!isAdmin&&<div style={{position:"absolute",top:14,right:14,background:"#10b981",color:"#fff",fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,zIndex:2}}>NEW</div>}
       {v.status==="exchanged"&&<div style={{position:"absolute",inset:0,background:"rgba(255,255,255,.78)",zIndex:3,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:20}}><span style={{background:"#6b7280",color:"#fff",padding:"8px 20px",borderRadius:30,fontWeight:700,fontSize:14}}>Exchanged ✓</span></div>}
-      {/* MALL BANNER */}
-      {v.mall&&<div style={{background:mall?mall.bg:"#f3f4f6",borderBottom:`2px solid ${mall?mall.accent:"#e5e7eb"}`,padding:"6px 16px",display:"flex",alignItems:"center",gap:6}}>
-        <span style={{background:mall?mall.accent:"#6b7280",color:"#fff",fontSize:10,fontWeight:800,padding:"2px 10px",borderRadius:20,letterSpacing:.5}}>{v.mall}</span>
+      {v.mall&&<div style={{background:mall?mall.bg:"#f9fafb",borderBottom:`2px solid ${mall?mall.accent+"33":"#e5e7eb"}`,padding:"6px 16px"}}>
+        <span style={{background:mall?mall.accent:"#6b7280",color:"#fff",fontSize:10,fontWeight:800,padding:"2px 10px",borderRadius:20}}>{v.mall}</span>
       </div>}
-      <div style={{background:cat.bg,padding:"20px 20px 14px",borderBottom:`2px solid ${cat.accent}22`}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <div style={{background:cat.bg,padding:"18px 18px 12px",borderBottom:`2px solid ${cat.accent}22`}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
           <Avatar initials={v.avatar} color={v.aColor} size={34}/>
-          <div>
-            <div style={{fontWeight:600,fontSize:13,color:"#1f2937"}}>{v.owner}</div>
-            <div style={{fontSize:11,color:"#6b7280"}}>{v.occasion}</div>
-          </div>
+          <div><div style={{fontWeight:600,fontSize:13,color:"#1f2937"}}>{v.owner}</div><div style={{fontSize:11,color:"#6b7280"}}>{v.occasion}</div></div>
         </div>
-        <div style={{fontWeight:800,fontSize:18,color:"#1f2937",lineHeight:1.2}}>{v.title}</div>
-        <div style={{marginTop:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-          <span style={{background:cat.accent,color:"#fff",fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20}}>{v.value}</span>
-          <span style={{background:cat.bg,color:cat.text,fontSize:11,fontWeight:600,padding:"4px 10px",borderRadius:20,border:`1px solid ${cat.accent}44`}}>{v.category}</span>
+        <div style={{fontWeight:800,fontSize:17,color:"#1f2937",lineHeight:1.2}}>{v.title}</div>
+        <div style={{marginTop:8,display:"flex",gap:8,flexWrap:"wrap"}}>
+          <span style={{background:cat.accent,color:"#fff",fontSize:12,fontWeight:700,padding:"3px 12px",borderRadius:20}}>{v.value}</span>
+          <span style={{background:cat.bg,color:cat.text,fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:20,border:`1px solid ${cat.accent}44`}}>{v.category}</span>
         </div>
       </div>
-      <div style={{padding:"14px 20px",flex:1,display:"flex",flexDirection:"column",gap:8}}>
+      <div style={{padding:"12px 18px",flex:1,display:"flex",flexDirection:"column",gap:6}}>
         <div style={{fontSize:12,color:"#6b7280"}}><span style={{fontWeight:600,color:"#374151"}}>Seeking: </span>{v.seeking}</div>
         <div style={{fontSize:11,color:"#9ca3af"}}>Expires: {v.expires}</div>
-        {!isAdmin&&(
+        {!isAdmin?(
           <div style={{display:"flex",gap:8,marginTop:"auto",paddingTop:10}}>
-            <button onClick={()=>onExchange(v)} disabled={v.status==="exchanged"} className="btn-main" style={{flex:1,background:v.status==="exchanged"?"#e5e7eb":"linear-gradient(135deg,#6c3ce1,#e91e8c)",color:v.status==="exchanged"?"#9ca3af":"#fff",borderRadius:12,padding:"10px 0",fontWeight:700,fontSize:13,cursor:v.status==="exchanged"?"not-allowed":"pointer"}}>
+            <button onClick={()=>onExchange(v)} disabled={v.status==="exchanged"} className="btn-main"
+              style={{flex:1,background:v.status==="exchanged"?"#e5e7eb":"linear-gradient(135deg,#6c3ce1,#e91e8c)",color:v.status==="exchanged"?"#9ca3af":"#fff",borderRadius:12,padding:"10px 0",fontWeight:700,fontSize:13,cursor:v.status==="exchanged"?"not-allowed":"pointer"}}>
               {v.status==="exchanged"?"Exchanged":"🔁 Exchange"}
             </button>
             <button onClick={()=>onLike(v.id)} style={{width:44,background:liked?"#fce7f3":"#f9fafb",border:liked?"1.5px solid #ec4899":"1.5px solid #e5e7eb",borderRadius:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:2,padding:"4px 0"}}>
               <span style={{fontSize:16}}>{liked?"❤️":"🤍"}</span>
-              <span style={{fontSize:10,color:"#6b7280",fontWeight:600}}>{v.likes+(liked?1:0)}</span>
+              <span style={{fontSize:10,color:"#6b7280",fontWeight:600}}>{(v.likes||0)+(liked?1:0)}</span>
             </button>
           </div>
-        )}
-        {isAdmin&&(
-          <div style={{marginTop:"auto",paddingTop:10,background:"#fff5f5",borderRadius:10,padding:"10px",textAlign:"center"}}>
-            <span style={{fontSize:12,color:"#ef4444",fontWeight:600}}>🛡 Admin: Click 🗑 to remove</span>
+        ):(
+          <div style={{marginTop:"auto",paddingTop:10,background:"#fff5f5",borderRadius:10,padding:10,textAlign:"center"}}>
+            <span style={{fontSize:12,color:"#ef4444",fontWeight:600}}>🛡 Click 🗑 to permanently remove</span>
           </div>
         )}
       </div>
@@ -130,21 +181,17 @@ function VoucherCard({v,onExchange,onLike,likedIds,isAdmin,onDelete}){
 }
 
 function AdminLoginModal({onClose,onLogin}){
-  const [pwd,setPwd]=useState("");
-  const [err,setErr]=useState(false);
-  const attempt=()=>{
-    if(pwd===ADMIN_PASSWORD){onLogin();onClose();}
-    else{setErr(true);setPwd("");setTimeout(()=>setErr(false),2000);}
-  };
+  const [pwd,setPwd]=useState(""); const [err,setErr]=useState(false);
+  const attempt=()=>{if(pwd===ADMIN_PASSWORD){onLogin();onClose();}else{setErr(true);setPwd("");setTimeout(()=>setErr(false),2000);}};
   return(
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal-box" style={{maxWidth:380,textAlign:"center"}}>
         <div style={{fontSize:48,marginBottom:12}}>🛡</div>
         <div style={{fontWeight:800,fontSize:22,color:"#1f2937",marginBottom:6}}>Admin Login</div>
-        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Enter the admin password to manage vouchers</div>
+        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Enter admin password to manage vouchers</div>
         <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setErr(false);}} onKeyDown={e=>e.key==="Enter"&&attempt()} placeholder="Enter password..." autoFocus
           style={{width:"100%",padding:"12px 16px",borderRadius:12,border:`1.5px solid ${err?"#ef4444":"#e5e7eb"}`,fontSize:15,marginBottom:8,textAlign:"center",letterSpacing:4,background:err?"#fff5f5":"#f9fafb"}}/>
-        {err&&<div style={{color:"#ef4444",fontSize:13,fontWeight:600,marginBottom:8,animation:"shake .3s ease"}}>❌ Wrong password, try again</div>}
+        {err&&<div style={{color:"#ef4444",fontSize:13,fontWeight:600,marginBottom:8,animation:"shake .3s ease"}}>❌ Wrong password</div>}
         <div style={{display:"flex",gap:10,marginTop:16}}>
           <button onClick={onClose} className="btn-ghost" style={{flex:1,padding:"12px 0",borderRadius:12,fontWeight:600,fontSize:14}}>Cancel</button>
           <button onClick={attempt} className="btn-main" style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14}}>Login 🔐</button>
@@ -163,21 +210,20 @@ function ConfirmDeleteModal({v,onClose,onConfirm}){
         <div style={{fontWeight:800,fontSize:20,color:"#1f2937",marginBottom:8}}>Remove this voucher?</div>
         <div style={{background:"#fff5f5",borderRadius:14,padding:16,marginBottom:20,textAlign:"left"}}>
           <div style={{fontWeight:700,color:"#1f2937"}}>{v.title}</div>
-          <div style={{fontSize:13,color:"#6b7280"}}>Listed by {v.owner} · {v.value}</div>
+          <div style={{fontSize:13,color:"#6b7280"}}>By {v.owner} · {v.value} · {v.mall}</div>
         </div>
-        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>This will permanently remove the voucher from the platform.</div>
+        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>This will permanently delete it from the database. Cannot be undone.</div>
         <div style={{display:"flex",gap:10}}>
           <button onClick={onClose} className="btn-ghost" style={{flex:1,padding:"12px 0",borderRadius:12,fontWeight:600,fontSize:14}}>Cancel</button>
-          <button onClick={onConfirm} style={{flex:2,padding:"12px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>Yes, Remove 🗑</button>
+          <button onClick={onConfirm} style={{flex:2,padding:"12px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>Yes, Delete 🗑</button>
         </div>
       </div>
     </div>
   );
 }
 
-function ExchangeModal({v,onClose,onConfirm}){
-  const [myV,setMyV]=useState("");
-  const [note,setNote]=useState("");
+function ExchangeModal({v,onClose,onConfirm,saving}){
+  const [myV,setMyV]=useState(""); const [note,setNote]=useState("");
   if(!v)return null;
   return(
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -187,7 +233,7 @@ function ExchangeModal({v,onClose,onConfirm}){
         <div style={{background:"#f3f4f6",borderRadius:14,padding:16,marginBottom:20}}>
           <div style={{fontSize:12,color:"#9ca3af",marginBottom:4}}>Their voucher</div>
           <div style={{fontWeight:700,color:"#1f2937"}}>{v.title}</div>
-          <div style={{fontSize:13,color:"#6b7280"}}>Value: {v.value} · {v.category}</div>
+          <div style={{fontSize:13,color:"#6b7280"}}>{v.value} · {v.category} · {v.mall}</div>
         </div>
         <div style={{marginBottom:14}}>
           <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>What voucher are you offering? *</label>
@@ -199,8 +245,9 @@ function ExchangeModal({v,onClose,onConfirm}){
         </div>
         <div style={{display:"flex",gap:12}}>
           <button onClick={onClose} className="btn-ghost" style={{flex:1,padding:"12px 0",borderRadius:12,fontWeight:600,fontSize:14}}>Cancel</button>
-          <button onClick={()=>{if(myV.trim())onConfirm(myV,note);}} className="btn-main" style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14,background:myV.trim()?"linear-gradient(135deg,#6c3ce1,#e91e8c)":"#e5e7eb",color:myV.trim()?"#fff":"#9ca3af",cursor:myV.trim()?"pointer":"not-allowed"}}>
-            Send Request 🚀
+          <button onClick={()=>{if(myV.trim())onConfirm(myV,note);}} disabled={saving||!myV.trim()} className="btn-main"
+            style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14,opacity:saving?.7:1}}>
+            {saving?"Saving...":"Send Request 🚀"}
           </button>
         </div>
       </div>
@@ -208,27 +255,25 @@ function ExchangeModal({v,onClose,onConfirm}){
   );
 }
 
-function AddModal({onClose,onAdd}){
+function AddModal({onClose,onAdd,saving}){
   const [f,setF]=useState({owner:"",title:"",category:"Shopping",occasion:"Birthday 🎂",mall:"🏬 Oberoi Mall",value:"",expires:"",seeking:""});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const valid=f.owner&&f.title&&f.value&&f.expires&&f.seeking&&f.mall;
+  const valid=f.owner&&f.title&&f.value&&f.expires&&f.seeking;
   return(
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal-box">
         <div style={{fontWeight:800,fontSize:22,marginBottom:4,color:"#1f2937"}}>🎁 List Your Voucher</div>
-        <div style={{fontSize:14,color:"#6b7280",marginBottom:24}}>Share your gift with colleagues</div>
+        <div style={{fontSize:14,color:"#6b7280",marginBottom:18}}>Saved instantly — visible to all colleagues in real time 🔥</div>
 
-        {/* MALL SELECTOR — prominent at top */}
         <div style={{marginBottom:18}}>
           <label style={{fontSize:13,fontWeight:700,color:"#374151",display:"block",marginBottom:8}}>Your Mall *</label>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             {MALLS.filter(m=>m!=="All Malls").map(m=>{
-              const mc=MALL_COLORS[m];
-              const selected=f.mall===m;
+              const mc=MALL_COLORS[m]; const sel=f.mall===m;
               return(
-                <button key={m} onClick={()=>set("mall",m)} style={{padding:"14px 10px",borderRadius:14,border:`2px solid ${selected?mc.accent:"#e5e7eb"}`,background:selected?mc.bg:"#f9fafb",color:selected?mc.text:"#6b7280",fontWeight:selected?800:500,fontSize:14,cursor:"pointer",transition:"all .15s",textAlign:"center"}}>
-                  {m}
-                  {selected&&<div style={{fontSize:10,fontWeight:600,color:mc.accent,marginTop:4}}>✓ Selected</div>}
+                <button key={m} onClick={()=>set("mall",m)}
+                  style={{padding:"14px 10px",borderRadius:14,border:`2px solid ${sel?mc.accent:"#e5e7eb"}`,background:sel?mc.bg:"#f9fafb",color:sel?mc.text:"#6b7280",fontWeight:sel?800:500,fontSize:14,cursor:"pointer",textAlign:"center"}}>
+                  {m}{sel&&<div style={{fontSize:10,color:mc.accent,fontWeight:600,marginTop:3}}>✓ Selected</div>}
                 </button>
               );
             })}
@@ -236,12 +281,12 @@ function AddModal({onClose,onAdd}){
         </div>
 
         {[["Your Name *","owner","e.g. Rahul M."],["Voucher Title *","title","e.g. Zomato ₹500 Voucher"],["Value *","value","e.g. ₹500"],["Expires On *","expires","e.g. 30 Jun 2026"],["Looking For *","seeking","e.g. Amazon, Myntra"]].map(([label,key,ph])=>(
-          <div key={key} style={{marginBottom:14}}>
+          <div key={key} style={{marginBottom:13}}>
             <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>{label}</label>
             <input value={f[key]} onChange={e=>set(key,e.target.value)} placeholder={ph} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14}}/>
           </div>
         ))}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:22}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:"#374151",display:"block",marginBottom:5}}>Category</label>
             <select value={f.category} onChange={e=>set("category",e.target.value)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e5e7eb",fontSize:14,background:"#fff"}}>
@@ -257,8 +302,9 @@ function AddModal({onClose,onAdd}){
         </div>
         <div style={{display:"flex",gap:12}}>
           <button onClick={onClose} className="btn-ghost" style={{flex:1,padding:"12px 0",borderRadius:12,fontWeight:600,fontSize:14}}>Cancel</button>
-          <button onClick={()=>{if(valid)onAdd(f);}} className="btn-main" style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14,background:valid?"linear-gradient(135deg,#6c3ce1,#e91e8c)":"#e5e7eb",color:valid?"#fff":"#9ca3af",cursor:valid?"pointer":"not-allowed"}}>
-            List Voucher 🎉
+          <button onClick={()=>{if(valid&&!saving)onAdd(f);}} disabled={saving||!valid} className="btn-main"
+            style={{flex:2,padding:"12px 0",borderRadius:12,fontWeight:700,fontSize:14,background:valid?"linear-gradient(135deg,#6c3ce1,#e91e8c)":"#e5e7eb",color:valid?"#fff":"#9ca3af",cursor:valid?"pointer":"not-allowed",opacity:saving?.7:1}}>
+            {saving?"⏳ Saving to database...":"List Voucher 🎉"}
           </button>
         </div>
       </div>
@@ -272,7 +318,9 @@ function Toast({msg,onDone}){
 }
 
 function App(){
-  const [vouchers,setVouchers]=useState(INIT_VOUCHERS);
+  const [vouchers,setVouchers]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
   const [search,setSearch]=useState("");
   const [occasion,setOccasion]=useState("All");
   const [category,setCategory]=useState("All");
@@ -286,271 +334,240 @@ function App(){
   const [showAdminLogin,setShowAdminLogin]=useState(false);
   const [deleteTarget,setDeleteTarget]=useState(null);
 
+  useEffect(()=>{
+    if(!window.firebaseReady){setLoading(false);return;}
+    const ref=window.voucherDB;
+    ref.on("value",(snap)=>{
+      const data=snap.val();
+      if(data){
+        const list=Object.entries(data).map(([id,v])=>({...v,id}));
+        list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+        setVouchers(list);
+      } else { setVouchers([]); }
+      setLoading(false);
+    },(err)=>{ console.error(err); setLoading(false); });
+    return()=>ref.off();
+  },[]);
+
   const filtered=vouchers.filter(v=>{
     const s=search.toLowerCase();
-    const mS=v.title.toLowerCase().includes(s)||v.owner.toLowerCase().includes(s)||v.category.toLowerCase().includes(s);
-    const mO=occasion==="All"||v.occasion===occasion;
-    const mC=category==="All"||v.category===category;
-    const mM=mall==="All Malls"||v.mall===mall;
-    return mS&&mO&&mC&&mM;
+    return(v.title.toLowerCase().includes(s)||v.owner.toLowerCase().includes(s)||v.category.toLowerCase().includes(s))
+      &&(occasion==="All"||v.occasion===occasion)
+      &&(category==="All"||v.category===category)
+      &&(mall==="All Malls"||v.mall===mall);
   });
   const avail=filtered.filter(v=>v.status==="available");
   const exchd=filtered.filter(v=>v.status==="exchanged");
   const stats={total:vouchers.length,available:vouchers.filter(v=>v.status==="available").length,exchanged:vouchers.filter(v=>v.status==="exchanged").length};
 
-  const handleExchangeConfirm=(myV,note)=>{
-    setVouchers(vs=>vs.map(v=>v.id===exchangeTarget.id?{...v,status:"exchanged"}:v));
-    setToast(`✅ Exchange request sent to ${exchangeTarget.owner}!`);
-    setExchangeTarget(null);
+  const handleAdd=async(f)=>{
+    setSaving(true);
+    try{
+      await window.voucherDB.push({...f,avatar:getInitials(f.owner),aColor:getAColor(f.owner),status:"available",likes:0,isNew:true,createdAt:Date.now()});
+      setShowAdd(false);
+      setToast("🎉 Voucher saved to database! Visible to all colleagues now.");
+    }catch(e){setToast("❌ Error saving. Check your connection.");}
+    setSaving(false);
   };
 
-  const handleAdd=(f)=>{
-    const initials=getInitials(f.owner);
-    const aColor=getAvatarColor(f.owner);
-    const newV={id:Date.now(),owner:f.owner,avatar:initials,aColor,...f,status:"available",likes:0,isNew:true};
-    setVouchers(vs=>[newV,...vs]);
-    setShowAdd(false);
-    setToast("🎉 Your voucher is now live!");
+  const handleExchangeConfirm=async(myV,note)=>{
+    setSaving(true);
+    try{
+      await window.voucherDB.child(exchangeTarget.id).update({status:"exchanged",exchangedWith:myV,exchangeNote:note,exchangedAt:Date.now()});
+      setToast(`✅ Exchange request sent to ${exchangeTarget.owner}!`);
+      setExchangeTarget(null);
+    }catch(e){setToast("❌ Error. Try again.");}
+    setSaving(false);
   };
 
-  const handleDelete=()=>{
-    setVouchers(vs=>vs.filter(v=>v.id!==deleteTarget.id));
-    setToast(`🗑 Voucher removed by Admin`);
-    setDeleteTarget(null);
+  const handleDelete=async()=>{
+    try{
+      await window.voucherDB.child(deleteTarget.id).remove();
+      setToast("🗑 Voucher deleted from database");
+      setDeleteTarget(null);
+    }catch(e){setToast("❌ Error deleting.");}
   };
 
-  const handleLike=(id)=>setLikedIds(ids=>ids.includes(id)?ids.filter(i=>i!==id):[...ids,id]);
+  const handleLike=id=>setLikedIds(ids=>ids.includes(id)?ids.filter(i=>i!==id):[...ids,id]);
+  const handleAdminToggle=()=>{if(isAdmin){setIsAdmin(false);setToast("👋 Exited Admin mode");}else{setShowAdminLogin(true);}};
 
-  const handleAdminToggle=()=>{
-    if(isAdmin){setIsAdmin(false);setToast("👋 Exited Admin mode");}
-    else{setShowAdminLogin(true);}
-  };
+  if(!window.firebaseReady)return <SetupScreen/>;
+  if(loading)return <LoadingScreen/>;
 
   return(
     <div style={{minHeight:"100vh",position:"relative",overflow:"hidden"}}>
       <div className="particle" style={{width:320,height:320,background:"#a78bfa",top:-90,right:-90,animation:"float 7s ease-in-out infinite"}}/>
-      <div className="particle" style={{width:220,height:220,background:"#f9a8d4",bottom:80,left:-70,animation:"float 9s ease-in-out infinite 2s"}}/>
-      <div className="particle" style={{width:160,height:160,background:"#67e8f9",top:"38%",right:"6%",animation:"float 8s ease-in-out infinite 4s"}}/>
-      <div className="particle" style={{width:100,height:100,background:"#fde68a",top:"60%",left:"8%",animation:"float 6s ease-in-out infinite 1s"}}/>
+      <div className="particle" style={{width:200,height:200,background:"#f9a8d4",bottom:80,left:-60,animation:"float 9s ease-in-out infinite 2s"}}/>
+      <div className="particle" style={{width:150,height:150,background:"#67e8f9",top:"38%",right:"5%",animation:"float 8s ease-in-out infinite 4s"}}/>
 
       {/* HEADER */}
-      <div style={{background:"rgba(255,255,255,.88)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(124,58,237,.1)",position:"sticky",top:0,zIndex:100}}>
-        <div style={{maxWidth:1200,margin:"0 auto",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+      <div style={{background:"rgba(255,255,255,.9)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(124,58,237,.1)",position:"sticky",top:0,zIndex:100}}>
+        <div style={{maxWidth:1200,margin:"0 auto",padding:"13px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:46,height:46,borderRadius:14,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,boxShadow:"0 4px 14px rgba(108,60,225,.35)"}}>🎁</div>
+            <div style={{width:44,height:44,borderRadius:14,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>🎁</div>
             <div>
-              <div style={{fontWeight:900,fontSize:21,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>VoucherSwap</div>
-              <div style={{fontSize:11,color:"#9ca3af",fontWeight:500,marginTop:-2}}>Employee Gift Exchange Platform</div>
+              <div style={{fontWeight:900,fontSize:20,background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>VoucherSwap</div>
+              <div style={{fontSize:11,color:"#9ca3af",display:"flex",alignItems:"center"}}>
+                <span className="live-dot"/>Live · Oberoi Mall & Skycity Mall
+              </div>
             </div>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            <div style={{display:"flex",background:"#f3f4f6",borderRadius:12,padding:4,gap:4}}>
-              {[["browse","🔍 Browse"],["my-vouchers","📋 How It Works"],["policy","📋 Policy"]].map(([t,label])=>(
-                <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 14px",borderRadius:10,border:"none",background:tab===t?"#fff":"transparent",color:tab===t?"#6c3ce1":"#6b7280",fontWeight:tab===t?700:500,fontSize:13,cursor:"pointer",boxShadow:tab===t?"0 2px 8px rgba(0,0,0,.08)":"none",transition:"all .15s"}}>
-                  {label}
-                </button>
+            <div style={{display:"flex",background:"#f3f4f6",borderRadius:12,padding:3,gap:3}}>
+              {[["browse","🔍 Browse"],["howto","📖 How It Works"],["policy","📋 Policy"]].map(([t,l])=>(
+                <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 12px",borderRadius:9,border:"none",background:tab===t?"#fff":"transparent",color:tab===t?"#6c3ce1":"#6b7280",fontWeight:tab===t?700:500,fontSize:13,cursor:"pointer",boxShadow:tab===t?"0 2px 8px rgba(0,0,0,.08)":"none"}}>{l}</button>
               ))}
             </div>
-            {/* ADMIN TOGGLE */}
-            <button onClick={handleAdminToggle} style={{padding:"9px 14px",borderRadius:12,border:`1.5px solid ${isAdmin?"#ef4444":"#e5e7eb"}`,background:isAdmin?"#fff5f5":"#fff",color:isAdmin?"#ef4444":"#6b7280",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            <button onClick={handleAdminToggle} style={{padding:"9px 13px",borderRadius:12,border:`1.5px solid ${isAdmin?"#ef4444":"#e5e7eb"}`,background:isAdmin?"#fff5f5":"#fff",color:isAdmin?"#ef4444":"#6b7280",fontWeight:700,fontSize:13,cursor:"pointer"}}>
               {isAdmin?"🔓 Exit Admin":"🛡 Admin"}
             </button>
-            <button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:12,padding:"10px 18px",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6,animation:"pulse 2.5s ease-in-out infinite",boxShadow:"0 4px 16px rgba(108,60,225,.35)"}}>
+            <button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:12,padding:"10px 18px",fontWeight:700,fontSize:14,animation:"pulse 2.5s ease-in-out infinite",boxShadow:"0 4px 16px rgba(108,60,225,.35)"}}>
               + List Voucher
             </button>
           </div>
         </div>
       </div>
 
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 20px"}}>
-
-        {/* ADMIN BANNER */}
-        {isAdmin&&tab==="browse"&&(
-          <div className="admin-banner">
-            <span style={{fontSize:20}}>🛡</span>
-            <div>
-              <div>ADMIN MODE ACTIVE — You can delete any voucher by clicking the 🗑 button on each card</div>
-              <div style={{fontWeight:400,fontSize:12,opacity:.85}}>Click "Exit Admin" in the header when done</div>
-            </div>
-          </div>
-        )}
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"22px 20px"}}>
+        {isAdmin&&tab==="browse"&&<div className="admin-banner"><span style={{fontSize:20}}>🛡</span><div>ADMIN MODE — Click 🗑 on any card to permanently delete from database<div style={{fontWeight:400,fontSize:11,opacity:.85}}>Changes are instant and irreversible</div></div></div>}
 
         {/* STATS */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14,marginBottom:26}}>
-          {[
-            {label:"Total Vouchers",val:stats.total,icon:"🎁",bg:"#ede9fe",c:"#6c3ce1"},
-            {label:"Available Now",val:stats.available,icon:"✅",bg:"#dcfce7",c:"#059669"},
-            {label:"Exchanges Done",val:stats.exchanged,icon:"🔁",bg:"#fce7f3",c:"#db2777"},
-            {label:"Happy Members",val:vouchers.length>0?Math.max(vouchers.length,1):0,icon:"😊",bg:"#fef3c7",c:"#d97706"},
-          ].map(s=>(
-            <div key={s.label} style={{background:s.bg,borderRadius:18,padding:"16px 18px",textAlign:"center",animation:"fadeIn .5s ease"}}>
-              <div style={{fontSize:26}}>{s.icon}</div>
-              <div style={{fontSize:30,fontWeight:900,color:s.c,lineHeight:1.1}}>{s.val}</div>
-              <div style={{fontSize:12,color:"#6b7280",fontWeight:600,marginTop:2}}>{s.label}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:13,marginBottom:24}}>
+          {[{label:"Total Vouchers",val:stats.total,icon:"🎁",bg:"#ede9fe",c:"#6c3ce1"},{label:"Available Now",val:stats.available,icon:"✅",bg:"#dcfce7",c:"#059669"},{label:"Exchanges Done",val:stats.exchanged,icon:"🔁",bg:"#fce7f3",c:"#db2777"},{label:"Live Members",val:vouchers.length,icon:"😊",bg:"#fef3c7",c:"#d97706"}].map(s=>(
+            <div key={s.label} style={{background:s.bg,borderRadius:18,padding:"15px 16px",textAlign:"center"}}>
+              <div style={{fontSize:24}}>{s.icon}</div>
+              <div style={{fontSize:28,fontWeight:900,color:s.c,lineHeight:1.1}}>{s.val}</div>
+              <div style={{fontSize:11,color:"#6b7280",fontWeight:600,marginTop:2}}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* ——— BROWSE TAB ——— */}
         {tab==="browse"&&<>
-          {/* MALL QUICK FILTER — big prominent buttons */}
+          {/* MALL BUTTONS */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:20}}>
-            {[
-              {m:"All Malls",icon:"🏢",bg:"#f3f4f6",active:"#6c3ce1",activeBg:"#ede9fe",label:"All Malls"},
-              {m:"🏬 Oberoi Mall",icon:"🏬",bg:"#fff",active:"#f59e0b",activeBg:"#fef3c7",label:"Oberoi Mall"},
-              {m:"🏙 Skycity Mall",icon:"🏙",bg:"#fff",active:"#0ea5e9",activeBg:"#e0f2fe",label:"Skycity Mall"},
-            ].map(({m,icon,active,activeBg,label})=>{
+            {[{m:"All Malls",icon:"🏢",active:"#6c3ce1",activeBg:"#ede9fe",count:vouchers.length},
+              {m:"🏬 Oberoi Mall",icon:"🏬",active:"#f59e0b",activeBg:"#fef3c7",count:vouchers.filter(v=>v.mall==="🏬 Oberoi Mall").length},
+              {m:"🏙 Skycity Mall",icon:"🏙",active:"#0ea5e9",activeBg:"#e0f2fe",count:vouchers.filter(v=>v.mall==="🏙 Skycity Mall").length}
+            ].map(({m,icon,active,activeBg,count})=>{
               const sel=mall===m;
               return(
-                <button key={m} onClick={()=>setMall(m)} style={{padding:"16px 10px",borderRadius:18,border:`2px solid ${sel?active:"#e5e7eb"}`,background:sel?activeBg:"rgba(255,255,255,.9)",cursor:"pointer",textAlign:"center",transition:"all .2s",boxShadow:sel?`0 4px 16px ${active}33`:"0 2px 8px rgba(0,0,0,.04)"}}>
-                  <div style={{fontSize:28,marginBottom:4}}>{icon}</div>
-                  <div style={{fontWeight:sel?800:600,color:sel?active:"#6b7280",fontSize:14}}>{label}</div>
-                  {sel&&<div style={{fontSize:10,color:active,fontWeight:700,marginTop:3}}>● ACTIVE</div>}
-                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{m==="All Malls"?`${vouchers.length} vouchers`:vouchers.filter(v=>v.mall===m).length+" vouchers"}</div>
+                <button key={m} onClick={()=>setMall(m)} style={{padding:"13px 8px",borderRadius:16,border:`2px solid ${sel?active:"#e5e7eb"}`,background:sel?activeBg:"rgba(255,255,255,.9)",cursor:"pointer",textAlign:"center",transition:"all .2s",boxShadow:sel?`0 4px 14px ${active}33`:"0 2px 6px rgba(0,0,0,.04)"}}>
+                  <div style={{fontSize:24,marginBottom:3}}>{icon}</div>
+                  <div style={{fontWeight:sel?800:600,color:sel?active:"#6b7280",fontSize:13}}>{m==="All Malls"?"All Malls":m.replace(/^[^\s]+\s/,"")}</div>
+                  <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{count} voucher{count!==1?"s":""}</div>
+                  {sel&&<div style={{fontSize:9,color:active,fontWeight:700,marginTop:2}}>● ACTIVE</div>}
                 </button>
               );
             })}
           </div>
 
           {/* SEARCH & FILTERS */}
-          <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:"18px 22px",marginBottom:20,boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍  Search vouchers, names, categories..." style={{width:"100%",padding:"12px 16px",borderRadius:12,border:"1.5px solid #e5e7eb",fontSize:15,marginBottom:14,background:"#f9fafb"}}/>
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#9ca3af",marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Occasion</div>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                {OCCASIONS.map(o=>(
-                  <button key={o} onClick={()=>setOccasion(o)} className="pill-btn" style={{padding:"6px 13px",borderRadius:20,border:"1.5px solid",borderColor:occasion===o?"#7c3aed":"#e5e7eb",background:occasion===o?"#ede9fe":"#fff",color:occasion===o?"#7c3aed":"#6b7280",fontWeight:occasion===o?700:500,fontSize:12}}>
-                    {o}
-                  </button>
-                ))}
-              </div>
+          <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:"16px 20px",marginBottom:18,boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍  Search vouchers, names, categories..." style={{width:"100%",padding:"11px 16px",borderRadius:12,border:"1.5px solid #e5e7eb",fontSize:15,marginBottom:12,background:"#f9fafb"}}/>
+            <div style={{marginBottom:9}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",marginBottom:5,textTransform:"uppercase",letterSpacing:.8}}>Occasion</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{OCCASIONS.map(o=><button key={o} onClick={()=>setOccasion(o)} className="pill-btn" style={{padding:"5px 11px",borderRadius:20,border:"1.5px solid",borderColor:occasion===o?"#7c3aed":"#e5e7eb",background:occasion===o?"#ede9fe":"#fff",color:occasion===o?"#7c3aed":"#6b7280",fontWeight:occasion===o?700:500,fontSize:12}}>{o}</button>)}</div>
             </div>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:"#9ca3af",marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Category</div>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                {CATEGORIES.map(c=>(
-                  <button key={c} onClick={()=>setCategory(c)} className="pill-btn" style={{padding:"5px 11px",borderRadius:16,border:"1.5px solid",borderColor:category===c?"#e91e8c":"#e5e7eb",background:category===c?"#fce7f3":"#fff",color:category===c?"#be185d":"#6b7280",fontWeight:category===c?700:500,fontSize:11}}>
-                    {c}
-                  </button>
-                ))}
-              </div>
+              <div style={{fontSize:10,fontWeight:700,color:"#9ca3af",marginBottom:5,textTransform:"uppercase",letterSpacing:.8}}>Category</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{CATEGORIES.map(c=><button key={c} onClick={()=>setCategory(c)} className="pill-btn" style={{padding:"4px 10px",borderRadius:16,border:"1.5px solid",borderColor:category===c?"#e91e8c":"#e5e7eb",background:category===c?"#fce7f3":"#fff",color:category===c?"#be185d":"#6b7280",fontWeight:category===c?700:500,fontSize:11}}>{c}</button>)}</div>
             </div>
           </div>
 
           {/* MARQUEE */}
-          <div style={{background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",borderRadius:14,padding:"10px 0",marginBottom:22,overflow:"hidden"}}>
+          <div style={{background:"linear-gradient(135deg,#6c3ce1,#e91e8c)",borderRadius:14,padding:"9px 0",marginBottom:18,overflow:"hidden"}}>
             <div style={{display:"flex",gap:48,color:"#fff",fontSize:13,fontWeight:600,whiteSpace:"nowrap",animation:"marqueeScroll 22s linear infinite"}}>
-              {vouchers.length>0
-                ?[...vouchers,...vouchers].map((v,i)=><span key={i} style={{padding:"0 8px"}}>🎁 {v.title} — {v.value}</span>)
-                :[...Array(5)].map((_,i)=><span key={i} style={{padding:"0 32px"}}>🎁 Welcome to VoucherSwap! &nbsp;·&nbsp; Be the first to list your voucher &nbsp;·&nbsp; Click "+ List Voucher" to get started &nbsp;·&nbsp;</span>)
-              }
+              {vouchers.length>0?[...vouchers,...vouchers].map((v,i)=><span key={i} style={{padding:"0 8px"}}>🎁 {v.title} — {v.value} · {v.mall||""}</span>)
+                :[...Array(4)].map((_,i)=><span key={i} style={{padding:"0 32px"}}>🎁 Welcome to VoucherSwap! Be the first to list your voucher ·</span>)}
             </div>
           </div>
 
-          {/* CARDS */}
-          <div style={{fontSize:15,fontWeight:700,color:"#374151",marginBottom:14}}>
-            {avail.length} voucher{avail.length!==1?"s":""} available
-            {isAdmin&&avail.length>0&&<span style={{color:"#ef4444",fontWeight:600,fontSize:13,marginLeft:10}}>🛡 Admin mode — click 🗑 to remove any voucher</span>}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))",gap:18}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#374151",marginBottom:12}}>{avail.length} voucher{avail.length!==1?"s":""} available{isAdmin&&avail.length>0&&<span style={{color:"#ef4444",fontWeight:600,fontSize:12,marginLeft:8}}>· 🛡 Admin mode on</span>}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(265px,1fr))",gap:16}}>
             {avail.map(v=><VoucherCard key={v.id} v={v} onExchange={setExchangeTarget} onLike={handleLike} likedIds={likedIds} isAdmin={isAdmin} onDelete={setDeleteTarget}/>)}
             {avail.length===0&&(
               <div style={{gridColumn:"1/-1",textAlign:"center",padding:"70px 20px"}}>
-                <div style={{fontSize:64}}>{vouchers.length===0?"🎁":"🔍"}</div>
-                <div style={{fontSize:22,fontWeight:800,marginTop:16,color:"#1f2937"}}>{vouchers.length===0?"No vouchers listed yet!":"No vouchers match your filters"}</div>
-                <div style={{fontSize:15,color:"#6b7280",marginTop:8,marginBottom:24}}>{vouchers.length===0?"Be the first to list your gift voucher and start exchanging with colleagues.":"Try selecting 'All Malls' or adjusting your filters."}</div>
-                {vouchers.length===0
-                  ?<button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:14,padding:"14px 32px",fontWeight:700,fontSize:16,boxShadow:"0 4px 16px rgba(108,60,225,.3)"}}>+ List Your Voucher 🎁</button>
-                  :<button onClick={()=>{setSearch("");setOccasion("All");setCategory("All");setMall("All Malls");}} style={{padding:"12px 24px",borderRadius:12,background:"#ede9fe",color:"#7c3aed",border:"none",fontWeight:700,cursor:"pointer",fontSize:14}}>Clear All Filters</button>
-                }
+                <div style={{fontSize:60}}>{vouchers.length===0?"🎁":"🔍"}</div>
+                <div style={{fontSize:20,fontWeight:800,marginTop:14,color:"#1f2937"}}>{vouchers.length===0?"Be the first to list a voucher!":"No vouchers match your filters"}</div>
+                <div style={{fontSize:14,color:"#6b7280",marginTop:6,marginBottom:18}}>{vouchers.length===0?"It saves instantly and your colleagues can see it right away.":"Try selecting All Malls or adjusting filters."}</div>
+                {vouchers.length===0?<button onClick={()=>setShowAdd(true)} className="btn-main" style={{borderRadius:14,padding:"13px 28px",fontWeight:700,fontSize:15}}>+ List Your Voucher 🎁</button>
+                  :<button onClick={()=>{setSearch("");setOccasion("All");setCategory("All");setMall("All Malls");}} style={{padding:"11px 22px",borderRadius:12,background:"#ede9fe",color:"#7c3aed",border:"none",fontWeight:700,cursor:"pointer",fontSize:14}}>Clear All Filters</button>}
               </div>
             )}
           </div>
 
-          {exchd.length>0&&(
-            <div style={{marginTop:36}}>
-              <div style={{fontSize:14,fontWeight:700,color:"#9ca3af",marginBottom:14}}>✅ Completed Exchanges ({exchd.length})</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))",gap:18}}>
-                {exchd.map(v=><VoucherCard key={v.id} v={v} onExchange={setExchangeTarget} onLike={handleLike} likedIds={likedIds} isAdmin={isAdmin} onDelete={setDeleteTarget}/>)}
-              </div>
+          {exchd.length>0&&<div style={{marginTop:30}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#9ca3af",marginBottom:12}}>✅ Completed Exchanges ({exchd.length})</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(265px,1fr))",gap:16}}>
+              {exchd.map(v=><VoucherCard key={v.id} v={v} onExchange={setExchangeTarget} onLike={handleLike} likedIds={likedIds} isAdmin={isAdmin} onDelete={setDeleteTarget}/>)}
             </div>
-          )}
+          </div>}
         </>}
 
-        {/* ——— HOW IT WORKS TAB ——— */}
-        {tab==="my-vouchers"&&(
-          <div style={{animation:"fadeIn .4s ease"}}>
-            <div style={{background:"rgba(255,255,255,.92)",borderRadius:20,padding:32,boxShadow:"0 4px 20px rgba(0,0,0,.06)",marginBottom:20,textAlign:"center"}}>
-              <div style={{fontSize:56}}>🎁</div>
-              <div style={{fontSize:22,fontWeight:800,color:"#1f2937",marginTop:12}}>How VoucherSwap Works</div>
-              <div style={{fontSize:14,color:"#6b7280",marginTop:6,marginBottom:32}}>Exchange your unwanted gift vouchers with colleagues in 4 easy steps</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:24,textAlign:"center"}}>
-                {[["🎁","1. List It","Got a voucher you don't need? Post it here with what you're looking for in return."],["🔍","2. Browse","Explore vouchers your colleagues have listed across all occasions and categories."],["🔁","3. Request","See something you like? Send an exchange request with your own voucher offer."],["✅","4. Swap!","Connect with your colleague directly and complete the swap. Everyone wins!"]].map(([ic,step,desc])=>(
-                  <div key={step} style={{background:"#f9fafb",borderRadius:16,padding:"24px 16px"}}>
-                    <div style={{fontSize:40,marginBottom:12}}>{ic}</div>
-                    <div style={{fontWeight:700,color:"#6c3ce1",fontSize:15,marginBottom:8}}>{step}</div>
-                    <div style={{fontSize:13,color:"#6b7280",lineHeight:1.7}}>{desc}</div>
-                  </div>
-                ))}
-              </div>
-              <button onClick={()=>{setTab("browse");setShowAdd(true);}} className="btn-main" style={{borderRadius:14,padding:"14px 32px",fontWeight:700,fontSize:16,marginTop:28,boxShadow:"0 4px 16px rgba(108,60,225,.3)"}}>
-                + List Your First Voucher 🎁
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ——— POLICY TAB ——— */}
-        {tab==="policy"&&(
-          <div style={{animation:"fadeIn .4s ease"}}>
-            <div style={{background:"rgba(255,255,255,.95)",borderRadius:20,padding:32,boxShadow:"0 4px 20px rgba(0,0,0,.06)",marginBottom:20}}>
-              <div style={{fontSize:22,fontWeight:800,color:"#1f2937",marginBottom:6}}>📋 Company Exchange Policy</div>
-              <div style={{fontSize:14,color:"#6b7280",marginBottom:28}}>Please read and follow these guidelines for a smooth, compliant experience.</div>
-              {[
-                {icon:"🤝",title:"Voluntary Participation",desc:"All exchanges are completely voluntary. No employee shall be pressured to list, exchange, or accept any voucher."},
-                {icon:"🚫",title:"No Cash Transactions",desc:"VoucherSwap is a barter platform only. Selling vouchers for money is strictly prohibited and against company policy."},
-                {icon:"✅",title:"Legitimate Vouchers Only",desc:"Only list vouchers officially issued to you by the company as a gift or reward. Do not list purchased or third-party vouchers."},
-                {icon:"📣",title:"High-Value Exchange Disclosure",desc:"For exchanges involving ₹5,000 or more, employees must notify HR at hr@company.com before completing the exchange."},
-                {icon:"🔒",title:"Internal Use Only",desc:"This platform is strictly for internal company use. Do not share vouchers, listings, or platform access with anyone outside the organisation."},
-                {icon:"🛡️",title:"IT Monitoring",desc:"All activity on VoucherSwap is monitored by the IT Security team. Misuse may lead to disciplinary action."},
-                {icon:"📞",title:"Dispute Resolution",desc:"Any disputes arising from an exchange should be reported to HR. The company's decision on disputes is final."},
-                {icon:"📅",title:"Expiry Responsibility",desc:"Employees are responsible for checking and honouring expiry dates. The company is not liable for expired vouchers after exchange."},
-              ].map(item=>(
-                <div key={item.title} style={{display:"flex",gap:16,padding:"16px 0",borderBottom:"1px solid #f3f4f6"}}>
-                  <div style={{fontSize:28,flexShrink:0,width:36,textAlign:"center"}}>{item.icon}</div>
-                  <div><div style={{fontWeight:700,color:"#1f2937",fontSize:15,marginBottom:4}}>{item.title}</div><div style={{fontSize:14,color:"#6b7280",lineHeight:1.6}}>{item.desc}</div></div>
+        {tab==="howto"&&(
+          <div style={{animation:"fadeIn .4s ease",background:"rgba(255,255,255,.92)",borderRadius:20,padding:32,boxShadow:"0 4px 20px rgba(0,0,0,.06)",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:"#1f2937",marginBottom:6}}>How VoucherSwap Works</div>
+            <div style={{fontSize:14,color:"#6b7280",marginBottom:28}}>Simple steps to exchange your gift vouchers with colleagues</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:18,marginBottom:28}}>
+              {[["🎁","1. List It","Post your voucher — it saves instantly to the database and is visible to everyone."],
+                ["🔍","2. Browse","Filter by mall (Oberoi / Skycity), occasion or category."],
+                ["🔁","3. Request","Found something you like? Click Exchange and offer your voucher."],
+                ["✅","4. Swap!","Coordinate with your colleague and complete the swap. Everyone's happy!"]].map(([ic,step,desc])=>(
+                <div key={step} style={{background:"#f9fafb",borderRadius:16,padding:"22px 14px"}}>
+                  <div style={{fontSize:36,marginBottom:8}}>{ic}</div>
+                  <div style={{fontWeight:700,color:"#6c3ce1",fontSize:14,marginBottom:5}}>{step}</div>
+                  <div style={{fontSize:13,color:"#6b7280",lineHeight:1.6}}>{desc}</div>
                 </div>
               ))}
             </div>
-            <div style={{background:"linear-gradient(135deg,#ede9fe,#fce7f3)",borderRadius:20,padding:24,border:"1px solid rgba(124,58,237,.15)"}}>
-              <div style={{fontWeight:700,fontSize:15,color:"#6c3ce1",marginBottom:8}}>📧 Need Help?</div>
-              <div style={{fontSize:14,color:"#374151",lineHeight:1.9}}>
-                <strong>HR Team:</strong> hr@company.com<br/>
-                <strong>IT Helpdesk:</strong> it@company.com<br/>
-                <strong>Platform Admin:</strong> voucherswap@company.com
-              </div>
+            <div style={{padding:18,background:"linear-gradient(135deg,#ede9fe,#fce7f3)",borderRadius:14,marginBottom:20,fontSize:13,color:"#6b7280"}}>
+              🔥 <strong style={{color:"#6c3ce1"}}>Powered by Firebase</strong> — All data is saved in real-time to a secure cloud database. Nothing is lost when you close the browser.
+            </div>
+            <button onClick={()=>{setTab("browse");setShowAdd(true);}} className="btn-main" style={{borderRadius:14,padding:"13px 28px",fontWeight:700,fontSize:15}}>+ List Your Voucher 🎁</button>
+          </div>
+        )}
+
+        {tab==="policy"&&(
+          <div style={{animation:"fadeIn .4s ease"}}>
+            <div style={{background:"rgba(255,255,255,.95)",borderRadius:20,padding:30,boxShadow:"0 4px 20px rgba(0,0,0,.06)",marginBottom:18}}>
+              <div style={{fontSize:20,fontWeight:800,color:"#1f2937",marginBottom:4}}>📋 Company Exchange Policy</div>
+              <div style={{fontSize:13,color:"#6b7280",marginBottom:22}}>Please read and follow these guidelines for a smooth experience.</div>
+              {[{icon:"🤝",title:"Voluntary Participation",desc:"All exchanges are completely voluntary. No pressure to list or accept any voucher."},
+                {icon:"🚫",title:"No Cash Transactions",desc:"VoucherSwap is barter only. Selling vouchers for money is strictly prohibited."},
+                {icon:"✅",title:"Legitimate Vouchers Only",desc:"Only list vouchers officially gifted to you by the company."},
+                {icon:"📣",title:"High-Value Disclosure",desc:"For exchanges above ₹5,000 please inform HR before completing."},
+                {icon:"🔒",title:"Internal Use Only",desc:"Do not share this platform with anyone outside the organisation."},
+                {icon:"🛡️",title:"IT Monitoring",desc:"All activity is monitored by IT Security for compliance."},
+                {icon:"📞",title:"Dispute Resolution",desc:"Report disputes to HR. Company decision is final."},
+                {icon:"📅",title:"Expiry Responsibility",desc:"Employees are responsible for verifying voucher expiry dates."},
+              ].map(item=>(
+                <div key={item.title} style={{display:"flex",gap:14,padding:"12px 0",borderBottom:"1px solid #f3f4f6"}}>
+                  <div style={{fontSize:24,flexShrink:0,width:30,textAlign:"center"}}>{item.icon}</div>
+                  <div><div style={{fontWeight:700,color:"#1f2937",fontSize:14,marginBottom:2}}>{item.title}</div><div style={{fontSize:13,color:"#6b7280",lineHeight:1.6}}>{item.desc}</div></div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:"linear-gradient(135deg,#ede9fe,#fce7f3)",borderRadius:18,padding:22,border:"1px solid rgba(124,58,237,.15)"}}>
+              <div style={{fontWeight:700,fontSize:14,color:"#6c3ce1",marginBottom:8}}>📧 Need Help?</div>
+              <div style={{fontSize:13,color:"#374151",lineHeight:2}}><strong>HR Team:</strong> hr@oberoirealty.com<br/><strong>IT Helpdesk:</strong> it@oberoirealty.com<br/><strong>Platform Admin:</strong> voucherswap@oberoirealty.com</div>
             </div>
           </div>
         )}
       </div>
 
-      {/* MODALS */}
       {showAdminLogin&&<AdminLoginModal onClose={()=>setShowAdminLogin(false)} onLogin={()=>{setIsAdmin(true);setToast("🛡 Admin mode activated!");}}/>}
       {deleteTarget&&<ConfirmDeleteModal v={deleteTarget} onClose={()=>setDeleteTarget(null)} onConfirm={handleDelete}/>}
-      {exchangeTarget&&<ExchangeModal v={exchangeTarget} onClose={()=>setExchangeTarget(null)} onConfirm={handleExchangeConfirm}/>}
-      {showAdd&&<AddModal onClose={()=>setShowAdd(false)} onAdd={handleAdd}/>}
+      {exchangeTarget&&<ExchangeModal v={exchangeTarget} onClose={()=>setExchangeTarget(null)} onConfirm={handleExchangeConfirm} saving={saving}/>}
+      {showAdd&&<AddModal onClose={()=>setShowAdd(false)} onAdd={handleAdd} saving={saving}/>}
       {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
 
-      {/* FOOTER */}
-      <div style={{textAlign:"center",padding:"32px 20px",color:"#9ca3af",fontSize:12,borderTop:"1px solid rgba(0,0,0,.06)",marginTop:40,background:"rgba(255,255,255,.5)"}}>
-        <div style={{fontWeight:700,fontSize:14,color:"#6c3ce1",marginBottom:4}}>🎁 VoucherSwap</div>
-        Internal Employee Gift Exchange Platform · For company use only · Monitored by IT Security<br/>
-        © {new Date().getFullYear()} Company Confidential — Do not distribute externally
+      <div style={{textAlign:"center",padding:"28px 20px",color:"#9ca3af",fontSize:12,borderTop:"1px solid rgba(0,0,0,.06)",marginTop:40,background:"rgba(255,255,255,.5)"}}>
+        <div style={{fontWeight:700,fontSize:13,color:"#6c3ce1",marginBottom:4}}>🎁 VoucherSwap · Powered by Firebase 🔥</div>
+        Oberoi Mall & Skycity Mall · Internal Employee Gift Exchange · © {new Date().getFullYear()} Confidential
       </div>
     </div>
   );
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 </script>
 </body>
